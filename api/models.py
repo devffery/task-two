@@ -1,31 +1,30 @@
-from typing import Any
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 import uuid
-from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email, password=None, **kwargs):
         if not email:
-            raise ValueError("Email field must be set")
+            raise ValueError("Email field must be provided")
         email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        user = self.model(email=email, **kwargs)
         user.set_password(password)
-        user.save()
+        user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_admin', True)
-        extra_fields.setdefault('is_staff', True)
+    def create_superuser(self, email, password=None, **kwargs):
+        kwargs.setdefault('is_superuser', True)
+        kwargs.setdefault('is_admin', True)
+        kwargs.setdefault('is_staff', True)
 
-        if extra_fields.get('is_superuser') is not True:
+        if kwargs.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
-        if extra_fields.get('is_staff') is not True:
+        if kwargs.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_admin') is not True:
+        if kwargs.get('is_admin') is not True:
             raise ValueError('Superuser must have is_admin=True.')
 
-        return self.create_user(email, password, **extra_fields)
+        return self.create_user(email, password, **kwargs)
 
 class User(AbstractBaseUser, PermissionsMixin):
     userId = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
