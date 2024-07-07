@@ -27,28 +27,29 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **kwargs)
 
 class User(AbstractBaseUser, PermissionsMixin):
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
-    firstName = models.CharField(max_length=250)
-    lastName = models.CharField(max_length=250)
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=250, blank=True, null=True)
+    userId = models.CharField(max_length=50, unique=True, null=False, default=uuid.uuid4 )
+    firstName = models.CharField(max_length=250, null=False)
+    lastName = models.CharField(max_length=250, null=False)
+    email = models.EmailField(max_length=250, unique=True, null=False)
+    phone = models.CharField(max_length=20)       
     organizations = models.ManyToManyField('Organization')
     is_superuser = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
-    def __str__(self):
-        return self.email
-
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['firstName', 'lastName']
+    REQUIRED_FIELDS = ['firstName', 'lastName'] 
 
-    objects = CustomUserManager()
-
-class Organization(models.Model):
-    orgId = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
-    name = models.CharField(max_length=250)
-    description = models.TextField(blank=True, null=True)
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.username:
+            self.username = self.email
+        super().save(*args, **kwargs)
+        
+class Organisation(models.Model):
+    orgId = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    name = models.CharField(max_length=250, null=False)
+    description = models.TextField(null=True)
+    users = models.ManyToManyField(CustomUser, related_name='organisations')
 
     def __str__(self):
         return self.name
