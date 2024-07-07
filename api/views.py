@@ -18,17 +18,8 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             try:
-                self.perform_create(serializer)
-                user = serializer.instance
-                access_token = AccessToken.for_user(user)
-                response_data = {
-                    "status": "success",
-                    "message": "Registration Successful",
-                    "data": {
-                        'accessToken': str(access_token),
-                        "user": serializer.data
-                    }
-                }
+                user = self.perform_registration(serializer)
+                response_data = self.get_success_response(user)
                 return Response(response_data, status=status.HTTP_201_CREATED)
             except Exception as e:
                 response_data = {
@@ -38,8 +29,29 @@ class RegisterView(generics.CreateAPIView):
                 }
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
         else:
-            errors = [{"field": field, "message": str(error)} for field, error_list in serializer.errors.items() for error in error_list]
+            errors = self.get_serializer_errors(serializer)
             return Response({"errors": errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    def perform_registration(self, serializer):
+        self.perform_create(serializer)
+        user = serializer.instance
+        access_token = AccessToken.for_user(user)
+        return user
+
+    def get_success_response(self, user):
+        return {
+            "status": "success",
+            "message": "Registration Successful",
+            "data": {
+                'accessToken': str(access_token),
+                "user": self.get_serializer().data
+            }
+        }
+
+    def get_serializer_errors(self, serializer):
+        return [{"field": field, "message": str(error)} for field, error_list in serializer.errors.items() for error in error_list]
+
+
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
@@ -48,15 +60,22 @@ class LoginView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            response_data = {
-                "status": "success",
-                "message": "Login Successful",
-                "data": serializer.validated_data
-            }
+            response_data = self.get_success_response(serializer.validated_data)
             return Response(response_data, status=status.HTTP_200_OK)
         else:
-            errors = [{"field": field, "message": str(error)} for field, error_list in serializer.errors.items() for error in error_list]
+            errors = self.get_serializer_errors(serializer)
             return Response({"errors": errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    def get_success_response(self, validated_data):
+        return {
+            "status": "success",
+            "message": "Login Successful",
+            "data": validated_data
+        }
+
+    def get_serializer_errors(self, serializer):
+        return [{"field": field, "message": str(error)} for field, error_list in serializer.errors.items() for error in error_list]
+
 
 class GetUserView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
@@ -71,12 +90,16 @@ class GetUserView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         user = self.get_object()
         serializer = self.get_serializer(user)
-        response_data = {
+        response_data = self.get_success_response(serializer.data)
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def get_success_response(self, data):
+        return {
             "status": "success",
             "message": "Successful",
-            "data": serializer.data
+            "data": data
         }
-        return Response(response_data, status=status.HTTP_200_OK)
+
 
 class OrganizationViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin):
     permission_classes = [permissions.IsAuthenticated]
